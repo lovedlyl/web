@@ -1,0 +1,124 @@
+;;;; package.lisp
+
+(defpackage #:web
+  (:use #:cl #:parenscript)
+  (:export 
+   :make-web-project
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   :js2file :js2string :json2string :json2file 
+
+   ;;;;;; javascript API
+
+   ;;form both array and string
+   :valueof :indexof :last-indexof :to-string :to-local-string
+   :subseq :nsubseq
+   ;;;Array
+   ;; append, length already provided 
+   :every :remove-if-not :mapc  :join 
+   :mapcar :pop :push :pop-from-end :push-to-end 
+   :reduce :reduce-front-end :nreverse :some :sort 
+   ;;--------------------------------------------------
+   ;;String
+   :console-log 
+   :print :char-at :char-code-at :code-string
+   :string-lessp :string-match 
+   :string-replace :string-search :split 
+   :substr :substring :to-lower-case :to-upper-case
+   :to-local-lower-case :to-local-upper-case :trim-whitespace
+   
+   ;;-------------------------------------------------
+   ;;json
+   :parsejson :stringifyjson 
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   
+   
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;;;; for front only
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   :html2file
+   :html-frame
+   :css2file
+   :css2string
+   ;;-----------------
+   ;;;;;;js
+   ;;;;macro names define by defpsmacro
+   ;;util
+   :get-by-id :get-by-tag-name :get-by-class :query-select :query-select-all
+   :console-log :define-on-load :alert*
+   ;;dom
+   :define-dom-util
+   :get-selected-text
+   :clean-whitespace :prev :next :parent :first :last :id :tag :class
+   :text :html 
+   :attr :create-element :insert-element-before :insert-at :append-element
+   :remove :empty
+   ;;event
+   :define-event-util
+   :stop-propagation :prevent-default :add-event :remove-event
+   :get-event :get-event-type :get-event-target :normalize-event
+   ;;form
+   :define-form-util
+   :validate-form :watch-form :watch-fields :init-required-notice
+   ;;css
+   :define-css-util   
+   
+   :get-style :parent-x :parent-y :pos-x :pos-y :set-x :set-y
+   :add-x :add-y 
+   :get-height :get-width :full-height :full-width
+   :hide :show :set-opacity
+   :animation :slide-down :slide-up :fade-in :fade-out ;;animations
+   :get-x :get-y :get-element-x :get-element-y
+   :page-size :viewport-size :scroll-offsets :element-pos :drag
+   :contains-class :remove-class :add-class :toggle-class
+   ;;;;;;;;;;;AJAX
+   :define-ajax-util :ajax :cors-ajax ;;:create-streaming-client
+
+   :create-x-h-r :request-success :add-u-r-l-params
+   :encode-form-data :set-post-request-header
+   ;;-----------
+   ;;;;;;;;;;;;;;;CSS for cross browser
+   :opacity :transform-origin :border-radius :animation
+   :box-sizing
+
+   ;;------------jquery
+   :$$
+;;-----------------------------------------------------------------
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;;;;;for node only
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	:exec-js2string :exec-js2file
+   :node-html :node-html-fragment
+   :on :once 
+   :exports :module-exports
+   ;;;;;;;;;http
+   :create-server :listen 
+   :write :write-head :end
+   :content-type
+   :set-encoding :add-listener
+   ;;client
+   :remote-address :remote-port :writable :destroy
+   ;;;;;;;;;;;;require
+   :require-as
+   ;;;;;;;;;;;url
+   :pathname  
+   ;;;queringstring
+   :query-text
+   ;;;;;;fs
+   :delete-file :delete-file-sync
+   :rename-file 
+   :file-stat
+   :read-file :create-read-stream :create-write-stream :exists
+   ;;;;;path
+   :basename
+   ;;;;;;;;mime
+   :file-type 
+   ;;socket
+   :emit :broadcast-to :leave
+))
+
+;;;;;;;;;;;;;;
+(sexml:with-compiletime-active-layers
+    (sexml:standard-sexml sexml:xml-doctype)
+  (sexml:support-dtd
+   (merge-pathnames "html5.dtd" (asdf:system-source-directory "sexml"))
+   :<))

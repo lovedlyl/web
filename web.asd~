@@ -1,0 +1,53 @@
+;;;; web.asd
+
+(asdf:defsystem #:web
+  :description "Describe web here"
+  :author "claudio<lovedlyl@163.com>"
+  :license "Specify license here"
+  :depends-on (#:parenscript
+               #:sexml
+               #:cl-css
+	       #:quickproject)
+  :serial t
+  :components ((:file "package")
+	       ;;;;;;;;;;;;
+	       ;;for both
+	       ;;;;;;;;;;;
+	       (:file "util")
+	       (:file "web")
+	       (:file "js-api")
+	       ;;------------------------
+	       ;;;;;;;;;;;;;
+	       ;;;for front
+	       ;;;;;;;;;;;;;
+	       (:file "front/util")
+	       ;;css
+	       (:file "front/css/util")
+	       (:file "front/css/help")
+
+	       ;;js
+	       (:file "front/js/util")
+	       (:file "front/js/dom")
+	       (:file "front/js/form")
+	       (:file "front/js/event")
+
+	       (:file "front/js/drag")
+	       (:file "front/js/ajax")
+	       (:file "front/js/css")
+	       (:file "front/js/jquery")
+	       ;;------------------------------------------------	  
+	       ;;;;;;;;;;;;;
+	       ;;for node
+	       ;;;;;;;;;;;;
+	       (:file "node/util")
+	       ;;(:file "node/node-api")
+	       (:file "node/url")
+	       (:file "node/require")
+	       (:file "node/querystring")
+	       (:file "node/fs")
+	       (:file "node/server")
+	       (:file "node/path")
+	       (:file "node/socket")
+	       ;;-------------------------------------------------
+               ))
+

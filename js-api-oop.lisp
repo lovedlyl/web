@@ -1,0 +1,142 @@
+(in-package #:web)
+
+;;;;;;;;;;;;;;;;;;;;oop util
+
+;;;;;;;;;;Object && class
+
+;;;;;Object utility functions that enumerate properties
+
+;;Copy the enumerable properties of p to o, and return o.
+;;If o and o have a property by the same name, o's property is overwritten
+;;This function does not handle getters and setters or copy attirbute
+(defpsmacro define-oop-extend()
+  `(defun extend(o p)
+     (for-in (prop p)
+	     (setf (elt o prop) (elt p prop)))
+     o))
+
+;;Copy the enumerable properties of p to o, and return o.
+;;If o and p have a property by the same name, o's property is left alone.
+;;This function does not handle getters and setters or copy attributes.
+(defpsmacro define-oop-merge()
+  `(defun merge(o p)
+     (for-in (prop  p)
+	  (unless (chain o (has-own-property prop))
+	    (setf (elt o prop) (elt p prop))))
+     o))
+
+;;Remove properties from o if there is not a property with the same name in p.
+;;Rerturn o
+(defpsmacro define-oop-restrict()
+  `(defun restrict(o p)
+     (for-in (prop o)
+	     (unless (in prop p) 
+	       (delete (elt o prop))))
+     o))
+
+;;For each property of p, delete the property with the same name from o.
+;;Return o
+(defpsmacro define-oop-subtract()
+  `(defun subtract(o p)
+     (for-in (prop p)
+	     (delete (elt o prop)))
+     o))
+
+;;Return a new object that holds the properties of both o and p
+;;If o and p have properties by the same name, the value from o are used
+(defpsmacro define-oop-union()
+  `(progn 
+     (define-oop-extend)
+     (defun union (o p)
+       (extend ((extend (create) o) p)))))
+
+;;Rerturn a new object that holds only the properties of o that also appear
+;;in p. This is something like the intersection of o and p, but the values
+;;of the properties in p are discarded.
+(defpsmacro define-oop-intersection()
+  `(progn
+     (define-oop-restrict)
+     (defun intersection(o p)
+       (restrict (restrict (create) o) p))))
+    
+
+(defpsmacro define-oop-util()
+  `(var 
+    oop-util
+    (create
+     ;;;;inherit
+     inherit
+     (lambda(p)
+       (cond ((null p)
+	      (throw (*type-error)))
+	     ((@ *object create)
+	      (chain *object (create p)))
+	     ((let ((type (typeof p)))
+		(and (not (equal type "object"))
+		     (not (equal type "function"))))
+	      (throw (*type-error)))
+	     (t 
+	      (defun *fn() this)
+	      (setf (@ *fn prototype) p)
+	      (new (*fn)))))
+    ;;;inherit-prototype
+    inherit-prototype
+    (lambda(sub-type super-type)
+       (var prototype (chain oop-util (inherit (@ super-type prototype))))
+       (setf (@ prototype constructor) sub-type)
+       (setf (@ sub-type prototype) prototype))
+    ;;;get the class of system defined Object
+    class-of
+    (lambda(o)
+      (chain (cond ((= o null) "Null")
+		   ((= o undefined) "Undefined")
+		   (t (chain *object prototype 
+			     to-string (call o)
+			     (slice 8 -1))))
+	     (to-lower-case)))
+    ;;get own property keys
+    keys
+    (lambda(o)
+      (when (not (= (typeof o) "object"))
+	(throw (type-error)))
+      (var result '())
+      (for-in (prop o)
+	      (when (chain o (has-own-property prop))
+		(chain result (push prop))))
+      result)
+    ;;;;has-own-property && has-prototype-property
+    has-own-property
+    (lambda(obj name)
+      (chain obj (has-own-property name)))
+    has-prototype-property
+    (lambda(obj name)
+      (and (not (chain obj (has-own-property name)))
+	   (in name Obj)))
+
+)))
+
+
+;;;;;;;;;;;;;;;;;
+;;(defpsmacro this(&rest what)
+;;"reserved words of PS"
+;;  `(chain this ,@what))
+;;
+(defpsmacro prototype(class &rest attr)
+  `(chain ,class prototype ,@attr))
+
+(defpsmacro defclass((class &rest parameters) &body body)
+  `(defun ,class ,parameters
+     ,@body
+     this))
+
+(defpsmacro defsubclass((class parent-class &rest parameters)
+			 &body body)
+  `(progn 
+     (defun ,class ,parameters
+       ,@body
+       this)
+     (chain oop-util (inherit-prototype ,class ,parent-class))))
+            
+(defpsmacro defclass-variable((class &rest parameters) &body body)
+  `(var ,class (lambda ,parameters ,@body this)))
+

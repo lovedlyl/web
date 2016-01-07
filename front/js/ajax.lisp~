@@ -1,0 +1,290 @@
+(in-package #:web)
+(defpslibmacro(ajax)
+  `(create
+       ;;create xhr for all browsers avialable
+       create-x-h-r
+       (lambda()
+	 (var msxml_progid '("MSXML2.XMLHTTP.6.0"
+			     "MSXML3.XMLHTTP"
+			     "Microsoft.XMLHTTP";;not support readystate 3
+			     "MSXML2.XMLHTTP.3.0";;not support readystate 3
+			     ))
+	 (var req null)
+	 (try (setf req (new (*x-m-l-http-request)))
+	      ;;;Try the standard way first
+	      (:catch(e)
+		(do*((i 0 (incf i))
+		     (len (length msxml_progid)))
+		    ((>= i len))
+		  (try (setf req (new (*active-x-object (elt msxml_progid i))))
+		       (:catch(e2)
+			 ))))
+	      (:finally (return req))))
+       
+       
+       request-success
+       ;;Does a http response success
+       (lambda(request)
+	 (var status (@ request status))
+	 ;;(and (= (@ xhr ready-state) 4)
+	 (or (and (>= status 200) (< status 300))
+	     (= status 304) 
+	     (= status 1223)
+	     ;;“有的浏览器会错误地返回204状态码”，
+	     ;;而IE（非原生的XHR对象）中会将204设置为1223
+	     (= status 0)
+	     ;;Opera会在取得204时将status设置为0
+	     (and (>= (chain navigator user-agent (index-of "Safari")) 0)
+		  (= (typeof (@ request status)) "undefined"))
+	     ;;Safari returns an empty status if the file has not been modified
+	     
+	     ))
+
+       add-u-r-l-params
+       (lambda(url params)
+	 (when (= (chain url (index-of "?")) -1)
+	   (incf url "?"))
+	 (incf url (chain ajax-util (encode-form-data params))))       
+       
+       encode-form-data
+       (lambda(data)
+	 ;;编码对象的属性
+	 ;;如果它们来自HTML表单的名／值对，使用application/x-www-form-urlencode格式
+	 (cond((not data) "")
+	      (t (var pairs (array))
+		 (for-in 
+		  (name data)
+		  (unless (chain data (has-own-property name))
+		    continue)
+		  (when (= (typeof (elt data name)) "function")
+		    continue)
+		  (var value (chain (elt data name) (to-string)))
+		  (setf name (encode-u-r-i-component (chain name (replace " " "+")))
+			value (encode-u-r-i-component (chain value (replace " " "+"))))
+		  (chain pairs (push (+ name "=" value))))
+		 (chain pairs (join "&")))))
+
+       timed-get-text
+       (lambda(url timeout callback)
+	 (var request (new (*x-m-l-http-request)))
+	 (var timed-out false)
+	 (var timer (set-timeout
+		     (lambda()
+		       (setf timed-out true)
+		       (chain request (abort)))))
+	 (chain request (open "GET" url))
+	 (setf (@ request onreadystatechange)
+	       (lambda()
+		 (cond ((not (= (@ request ready-state) 4))
+			false)
+		       (timed-out false)
+		       (t (clear-timeout timer)
+			  (when (= (@ request status) 200)
+			    (callback (@ request response-text)))))))
+	 (chain request (send)))
+     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+       serialize 
+       ;;Takes two different types of objects:
+       ;;1.An Array of input elements
+       ;;2.A hash of key/value pairs
+       (lambda(a)
+	 (var s (list))
+	 (cond((= (@ a constructor) *array)
+	       (dotimes(i (length a))
+		 (var pair (elt a i))
+		 (chain s (push (+ (@ pair name) "="
+				   (encode-u-r-i-component (@ pair value)))))))
+	      (t (for-in(j a)
+			(chain s (push (+ j "=" 
+					  (encode-u-r-i-component (elt a j))))))))
+	 (chain s (join "&")))
+       ;;;;;;;;;
+       ajax
+       ;;;A generic function for performing Ajax requests
+       (lambda(options)
+	 ;;;initilizing the options
+	 (setf
+	  options
+	  (create
+	   method (or (@ options method) "GET")
+	   url (or (@ options url) "")
+	   data (or (@ options data) (create))
+	   ;;for jsonp
+	   data-type (or (@ options data-type) "") ;;if provided useing jsonp
+	   jsonp (or (@ options jsonp) "") ;;the callback function name
+	   
+	   ;;
+	   timeout (or (@ options timeout) 5000)
+	   request-headers (or (@ options request-headers) null)
+	   onsuccess (or (@ options onsuccess) (lambda()))
+	   onerror (or (@ options onerror) (lambda()))
+	   ontimeout (or (@ options ontimeout) (lambda()))
+	   oncomplete (or (@ options oncomplete) (lambda()))))
+	   ;;;;;;;;;;;;;;;;;;;;
+	 (var request-method (@ options method))
+	 (var request-data (@ options data))
+	 (var request-url (@ options url))
+	 (var timed-out false)
+	 ;;	 (cond((= (@ options data-type) "jsonp")
+	 ;;	       (var body (elt (chain document (get-elements-by-tag-name "body")) 0))
+	 ;;	       (var script (chain document (create-element "script")))
+	 ;;	       (setf (@ script src) (chain ajax-util (add-u-r-l-params request-url data)))
+	 ;;	       (chain body (append-child script)))
+	 ;;	      ;;;end jsonp
+	 ;;	      (t 
+	 ;;	       ;;(setf (@ request processed) false);;;;;
+	 ;;;;;;;;;;;;; jsonp ??????
+	 ;;create	 
+	 (var request (chain ajax-util (create-x-h-r)))
+	 (setf (@ request timer)
+	       (set-timeout (lambda()
+			      (setf timed-out true)
+			      (chain options (ontimeout request))
+			      (chain request (abort)))
+			    (@ options timeout)))
+	 ;;;;;;;;;
+	  ;;;handle
+	 (setf (@ request onreadystatechange)
+	       (lambda()
+		 (when (and (not timed-out)
+			    (= (@ request ready-state) 4))
+		   (clear-timeout (@ request timer))
+		   ;;(setf (@ request processed) true)
+		   (if (chain ajax-util (request-success request))
+		       (chain options (onsuccess request))
+		       (chain options (onerror request)))
+		   (chain options (oncomplete request))
+		   ;;clear the request for Ansy
+		   (setf request null))))
+
+	  ;;;open
+	 (chain request (open request-method
+			      (if (= (chain request-method (to-upper-case)) "GET")
+				  (chain ajax-util (add-u-r-l-params request-url request-data))
+				  request-url)
+			      true))
+
+	  ;;;;;send
+	  ;;;additional request headers
+	 (when (@ options request-headers)
+	   (for-in 
+	    (header (@ options request-headers))
+	    (chain request (set-request-header header (elt (@ options request-headers) header)))))
+	  ;;;;send the request
+
+	 (cond((= (chain request-method (to-upper-case)) "POST")
+	       (chain request (set-request-header "Content-Type" "application/x-www-form-urlencoded"))
+	       (chain request (send (chain ajax-util (encode-form-data request-data)))))
+	      (t (chain request (send null)))))
+
+       ;;;;;;;;;;;;IE8+ support and all other current broswers
+       cors-ajax
+       (lambda(options)
+	 (setf 
+	  options
+	  (create
+	   method (or (@ options method) "GET")
+	   url (or (@ options url) "")
+	   data (or (@ options data) (create))
+	   timeout (or (@ options timeout) 5000)
+	   ontimeout (or (@ options ontimeout) (lambda()))
+	   onsuccess (or (@ options onsuccess) (lambda()))
+	   onerror (or (@ options onerror) (lambda()))
+	   ))
+	 ;;;;;;;;;;;;;;;;
+	 (var request-method (@ options method))
+	 (var request-data (@ options data))
+	 (var request-url (@ options url))
+	 (var is-ie false)
+	 (defun create-cors-request()
+	   (cond ((not (= (typeof *x-domain-request) "undefined"))
+		  (setf is-ie true)
+		  (new (*x-domain-request)))		  
+		 ((not (= (typeof *x-m-l-http-request) "undefined"))
+		  (new (*x-m-l-http-request)))
+		 (t (new (*error "No CORS XHR object available.")))))
+	 ;;create
+	 (var request (create-cors-request))
+	 ;;open
+	 (chain request (open request-method
+			      (if (= (chain request-method (to-upper-case)) "GET")
+				  (chain ajax-util (add-u-r-l-params request-url request-data))
+				  request-url)))
+
+	 
+	 ;;handle
+	 (setf (@ request timeout) (@ options timeout)
+	       (@ request onload) (lambda() (chain options (onsuccess request)))
+	       (@ request onerror) (lambda() (chain options (onerror request)))
+	       (@ request ontimeout) (lambda() (chain options (ontimeout))))
+	 
+	 ;;set request headers  not available
+	 
+	 ;;send
+	 (cond((= (chain request-method (to-upper-case)) "POST")
+	       (if is-ie
+		   (setf (@ request content-type) "application/x-www-form-urlencoded")
+		   (chain request (set-request-header "Content-Type" "application/x-www-form-urlencoded")))
+	       (chain request (send (chain ajax-util (encode-form-data request-data)))))
+	      (t (chain request (send null)))))
+     ;;;;;;;;;;;;;;;;
+;;       ;;comet: 长轮询 ＆＆ 流
+;;       create-streaming-client ;;comet streaming 流
+;;       ;;多数浏览器中正常运行(IE 除外)
+;;       (lambda(url process finished)
+;;	 (var xhr (new (*x-m-l-http-request)))
+;;	 (var recieved 0)
+;;	 (chain xhr (open "GET" url true))
+;;	 (setf (@ xhr onreadystatechange)
+;;	       (lambda()
+;;		 (var result)
+;;		 (cond((= (@ xhr ready-state) 3)
+;;		       ;;;(console-log (@ xhr response-text))
+;;		       (alert 3)
+;;		       ;;只取得最新数据并调整计数器
+;;		       (setf result (chain xhr response-text (substring recieved)))
+;;		       (incf recieved (length result))
+;;		       ;;调用 progress 回调函数
+;;		       (process result))
+;;		      ((= (@ xhr ready-state) 4)
+;;		       (alert 4)
+;;		       (finished (@ xhr response-text))))))
+;;	 (chain xhr (send null))
+;;	 xhr)
+;;
+		     
+     
+     
+     
+     )))))
+
+;;;;;;;;;;;;;;;;
+(defpsmacro create-x-h-r()
+  `(chain ajax-util (create-x-h-r)))
+
+(defpsmacro request-success(request)
+  `(chain ajax-util (request-success ,request)))
+
+(defpsmacro encode-form-data(data)
+  `(chain ajax-util (encode-form-data ,data)))
+
+(defpsmacro add-u-r-l-params(url params)
+  `(chain ajax-util (add-u-r-l-params ,url ,params)))
+
+(defpsmacro set-post-request-header(request)
+  `(chain ,request (set-request-header "Content-Type" "application/x-www-form-urlencoded")))
+
+
+(defpsmacro serialize(a)
+  `(chain ajax-util (serialize ,a)))
+
+(defpsmacro ajax(options)
+  `(chain ajax-util (ajax ,options)))
+
+
+(defpsmacro cors-ajax(options)
+  `(chain ajax-util (cors-ajax ,options)))
+
+;;;;;;;;;;;;;
+;;(defpsmacro create-streaming-client(url process finished)
+;;  `(chain ajax-util (create-streaming-client ,url ,process ,finished)))

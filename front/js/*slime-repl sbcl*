@@ -1,0 +1,14 @@
+TEST-SITE> (html-frame (:title x :body y))
+; Evaluation aborted on #<UNBOUND-VARIABLE Y {1005BFA963}>.
+TEST-SITE> (html-frame (:title "Qwd" :body "QWdqwd"))
+"<!DOCTYPE html >
+<html lang=\"zh-CN\"><head><meta charset=\"utf-8\"/>
+<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/><title>Qwd</title>
+<!-- external css -->
+
+<!-- internal css -->
+
+<!-- Dynamic external script (can be with internal scripts) -->
+</head><!-- body -->
+<body>QWdqwd</body></html>"
+TEST-SITE> (ps (node-frame (:title "Qwd" :body "QWdqwd"))

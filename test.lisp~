@@ -1,0 +1,2 @@
+(ql:quickload "web")
+(in-package #:Web)
